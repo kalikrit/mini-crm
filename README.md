@@ -1,75 +1,43 @@
-# React + TypeScript + Vite
+# Мини-CRM «Объекты и задачи»
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Тестовое задание: система управления задачами на строительных объектах с ролевой моделью (постановщик и исполнитель) и историей изменений.
 
-Currently, two official plugins are available:
+## Стек
+*   React 18 + TypeScript
+*   Vite
+*   Supabase (PostgreSQL, Auth, RLS)
+*   React Router
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## Запуск проекта локально
 
-## React Compiler
+1. Установите зависимости:
+   ```bash
+   npm install
+   ```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+2. Создайте файл `.env` в корне проекта (рядом с `package.json`) и добавьте в него ваши ключи Supabase:
+   ```env
+   VITE_SUPABASE_URL=ваш_url_проекта
+   VITE_SUPABASE_ANON_KEY=ваш_anon_ключ
+   ```
 
-## Expanding the ESLint configuration
+3. Примените миграции базы данных. Скопируйте содержимое файла `supabase/migrations/01_init.sql` и выполните его в SQL-редакторе вашего проекта Supabase. Скрипт создаст таблицы, настроит RLS-политики, функцию перехода статусов и добавит тестовые данные.
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+4. Запустите сервер разработки:
+   ```bash
+   npm run dev
+   ```
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Тестовые аккаунты (созданы в БД)
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+| Роль | Email | Пароль |
+| :--- | :--- | :--- |
+| Постановщик | `setter@test.com` | `password123` |
+| Исполнитель | `exec1@test.com` | `password123` |
+| Исполнитель | `exec2@test.com` | `password123` |
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
-```
-
-You can also install [eslint-plugin-react-x](https://npmx.dev/package/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://npmx.dev/package/eslint-plugin-react-dom) for React-specific lint rules:
-
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-
-```
+## Реализованная логика и безопасность
+*   **RLS (Row Level Security)**: доступ к данным ограничен на уровне базы. Исполнитель видит только свои задачи и объекты, к которым они привязаны.
+*   **Безопасная смена статусов**: переходы статусов реализованы через `SECURITY DEFINER` RPC-функцию `transition_task`. Прямой `UPDATE` статуса через API невозможен (заблокирован политиками). Функция проверяет роль пользователя, допустимость перехода и обязательность комментария при возврате на доработку.
+*   **История**: таблица `task_history` защищена от изменения и удаления на уровне БД (политики `USING (false)`).
+*   **Мягкое удаление**: задачи и объекты не удаляются физически, а помечаются `deleted_at`, чтобы сохранить историю.
